@@ -58,7 +58,7 @@ Enum type (`role_enum`), meaning the database itself rejects any
 value outside these three. This is intentionally stricter than a
 plain string column.
 
-### Designations vs Roles — an important distinction
+### Designations vs Roles
 
 The `roles` concept controls **what a user can do** (access control).
 The `designations` table controls **what a member is called** within
