@@ -1,6 +1,6 @@
 # Portfolio 1 — Database Design and Modelling
 
-**Case Study:** Kowojọ — Multi-tenant Dues Management Platform
+**Case Study:** Kowojọ: a Multi-tenant Dues Management Platform
 **Database:** PostgreSQL
 **ORM:** SQLAlchemy 2.0
 
@@ -12,6 +12,7 @@
 - Entity identification, relationship mapping, and constraint design
 - Implementation of the schema as a runnable Python/SQLAlchemy package
 - ER diagram generated from the live database (via DBeaver)
+- Hand-authored Postgres DDL script (`schema.sql`) demonstrating understanding of the SQL that underlies the ORM abstraction
 
 ---
 
@@ -31,7 +32,7 @@
 
 ## Multi-tenancy Approach
 
-Kowojọ uses a **shared schema with `tenant_id` column** strategy.
+Kowojọ uses a shared schema with `tenant_id` column strategy.
 All tenant data lives in shared tables, and every record is scoped
 to a tenant via a `tenant_id` foreign key. This approach:
 
@@ -52,7 +53,7 @@ on the `users` table. The three fixed roles are:
 | `org_admin` | Manages one organisation's members, dues, and transactions |
 | `member` | Can view own data and make payments |
 
-These roles are enforced at the **database level** via a PostgreSQL
+These roles are enforced at the database level via a PostgreSQL
 Enum type (`role_enum`), meaning the database itself rejects any
 value outside these three. This is intentionally stricter than a
 plain string column.
@@ -75,12 +76,12 @@ separated:
 
 Organisation-specific member profile data (e.g. matric numbers,
 licence numbers, custom fields) is intentionally **not** stored here.
-It lives in MongoDB, linked to the `members` table via `member.id`.
+It will live in MongoDB, linked to the `members` table via `member.id`.
 See Portfolio 4 for the NoSQL model.
 
 ---
 
-## How to Run
+## How to Run the Python Package for the schema
 
 ### 1. Set up a virtual environment
 
@@ -114,14 +115,20 @@ python -m kowojo_db.init_db
 
 You should see all table names printed on success.
 
-### 5. Generate the ER Diagram in DBeaver
-
-1. Open DBeaver and connect to your `kowojo_db` database
-2. Expand the database → Schemas → public → Tables
-3. Select all tables → Right-click → "View Diagram"
-4. Export as PNG → save as `er-diagram.png` in this folder
-
 ---
+
+## DDL Script
+
+`schema.sql` contains the full PostgreSQL DDL for the Kowojọ schema,
+hand-authored to match the SQLAlchemy models exactly.
+
+It can be run independently of the Python package:
+
+    psql -U your_user -d kowojo_db -f schema.sql
+
+This script serves as human-readable documentation of the schema and demonstrates understanding of the raw SQL beneath the ORM layer.
+A commented-out teardown block at the top of the file allows the database to be reset cleanly during development.
+
 
 ## Schema Design Notes
 
@@ -134,16 +141,13 @@ handling safer.
 
 ### Why is `amount` stored on `transactions` and not just referenced from `dues_schedules`?
 
-If a dues amount changes next year, historical payment records must
-still reflect what was actually paid at the time. Storing the amount
-on the transaction row preserves this historical accuracy.
+If a dues amount changes next year, historical payment records must still reflect what was actually paid at the time. Storing the amount on the transaction row preserves this historical accuracy.
 
 ### Why is `tenant_id` on `transactions` (denormalisation)?
 
 It is technically derivable via `transaction → member → tenant`.
 However, almost every financial query will be scoped by tenant.
-Storing `tenant_id` directly on transactions avoids a join on
-every such query — a deliberate, justified performance trade-off.
+Storing `tenant_id` directly on transactions avoids a join on every such query.
 
 ### Why JSONB for `gateway_response` on transactions?
 
@@ -155,13 +159,14 @@ be queried if needed.
 ### Why no `updated_at` on `audit_logs`?
 
 Audit logs are append-only by design. A log entry should never be
-modified after it is written — that would defeat the purpose of an
+modified after it is written; that would defeat the purpose of an
 audit trail. The absence of `updated_at` enforces this intention
 at the model level.
 
 ---
 
 ## File Structure
+
 ```
 portfolio-1-database-design/
 ├── kowojo_db/
@@ -178,8 +183,9 @@ portfolio-1-database-design/
 │ ├── dues_schedule.py
 │ ├── transaction.py
 │ └── audit_log.py
-├── er-diagram.png # Generated from DBeaver after running init_db.py
+├── kowojo_db - ERD.png
 ├── requirements.txt
+├── schema.sql
 ├── .env.example
 └── README.md
 ```
