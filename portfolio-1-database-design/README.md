@@ -1,4 +1,4 @@
-# Portfolio 1 — Database Design and Modelling
+# Portfolio 1: Database Design and Modelling
 
 **Case Study:** Kowojọ: a Multi-tenant Dues Management Platform
 **Database:** PostgreSQL
@@ -21,11 +21,11 @@
 | Table | Purpose |
 | --- | --- |
 | `tenants` | Organisations registered on the platform |
-| `users` | Login identities — authentication, personal info, and platform role |
+| `users` | Login identities: authentication, personal info, and platform role |
 | `designations` | Organisation-defined titles for members (e.g. Chairman, Secretary) |
 | `members` | A user's membership record within a specific organisation |
 | `dues_schedules` | Payment rules defined by an organisation |
-| `transactions` | Payment records — every dues payment attempt |
+| `transactions` | Payment records: every dues payment attempt |
 | `audit_logs` | Append-only log of every significant system event |
 
 ---
@@ -75,7 +75,7 @@ separated:
 ## NoSQL Note
 
 Organisation-specific member profile data (e.g. matric numbers,
-licence numbers, custom fields) is intentionally **not** stored here.
+licence numbers, custom fields) is intentionally not stored here.
 It will live in MongoDB, linked to the `members` table via `member.id`.
 See Portfolio 4 for the NoSQL model.
 
@@ -134,7 +134,7 @@ A commented-out teardown block at the top of the file allows the database to be 
 
 ### Why UUIDs instead of integer IDs?
 
-Integer IDs are sequential and predictable — in a multi-tenant system,
+Integer IDs are sequential and predictable; in a multi-tenant system,
 a member with id=1 in one organisation could be confused with id=1
 in another. UUIDs are globally unique and make cross-tenant data
 handling safer.
