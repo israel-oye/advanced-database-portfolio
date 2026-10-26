@@ -30,6 +30,68 @@
 
 ---
 
+## Normalisation
+
+Before settling on the final schema, I walked through the standard
+normal forms to make sure the design was clean and defensible.
+Here is how the Kowojọ schema holds up.
+
+### First Normal Form (1NF)
+
+A table is in 1NF when every column holds a single, indivisible value
+and every row is uniquely identified.
+
+Every table in this schema uses a UUID primary key, so uniqueness is
+guaranteed. No column stores multiple values in one field. For
+example, a member's designation is not stored as a comma-separated
+string inside the `members` table; it gets its own `designations`
+table with a foreign key reference. The `gateway_response` column on
+`transactions` stores JSONB, which might look like a violation at
+first glance, but it is treated as a single opaque value from an
+external payment gateway — not a repeating group of structured
+data that belongs in its own table.
+
+### Second Normal Form (2NF)
+
+2NF requires that every non-key column depends on the whole primary key, not just part of it. This is mainly relevant when a table has a
+composite primary key (one made of multiple columns combined).
+
+Every table in this schema uses a single-column UUID primary key, so
+there is no possibility of a partial dependency. 2NF is satisfied
+across the board by design.
+
+### Third Normal Form (3NF)
+
+3NF requires that no non-key column depends on another non-key column; only on the primary key directly.
+
+The clearest design decision this drove was separating `users` from
+`members`. A user's name and email belong to their login identity,
+they don't depend on which organisation they belong to. If I had
+stored membership details and login details in one table, changing
+an organisation-specific field would risk touching authentication
+data, and vice versa. Keeping them separate means each table's
+columns depend only on their own primary key.
+
+The `designations` table came from the same reasoning. I initially
+considered putting a `designation_name` column directly on `members`,
+but that would mean the name of a designation (e.g, "Financial
+Secretary") would depend on the designation concept, not on the
+member's own primary key. Pulling it into its own table fixed that
+and also means an organisation can rename a designation in one place
+without updating every member row.
+
+### A Deliberate Denormalisation
+
+The one place I knowingly stepped back from strict 3NF is the
+`tenant_id` column on the `transactions` table. Technically this is
+derivable by joining through `members`, so it is redundant. I kept
+it because almost every financial query in the system will be scoped
+to a tenant, and removing a join on that critical path is a worthwhile
+trade-off. I am aware it introduces a maintenance responsibility; if a member ever moved between tenants (which the current design does
+not support anyway), this column would need updating too. The
+trade-off is acceptable given the query performance benefit and the
+constraint that tenant assignment is immutable in this system.
+
 ## Multi-tenancy Approach
 
 Kowojọ uses a shared schema with `tenant_id` column strategy.
@@ -65,8 +127,7 @@ The `designations` table controls **what a member is called** within
 their organisation (display metadata). These are deliberately
 separated:
 
-- An org's "Chairman" and "Financial Secretary" are designations —
-  they carry no special platform permissions
+- An org's "Chairman" and "Financial Secretary" are designations (they carry no special platform permissions)
 - Whether someone can approve new members or view all transactions
   is determined by their platform role (`org_admin` vs `member`)
 
@@ -145,7 +206,7 @@ If a dues amount changes next year, historical payment records must still reflec
 
 ### Why is `tenant_id` on `transactions` (denormalisation)?
 
-It is technically derivable via `transaction → member → tenant`.
+As explained in the normalisatioon sectioion above, tenant_id is technically derivable via `transaction → member → tenant`.
 However, almost every financial query will be scoped by tenant.
 Storing `tenant_id` directly on transactions avoids a join on every such query.
 
