@@ -247,6 +247,7 @@ portfolio-1-database-design/
 ├── kowojo_db - ERD.png
 ├── requirements.txt
 ├── schema.sql
+├── teardown.sql
 ├── .env.example
 └── README.md
 ```

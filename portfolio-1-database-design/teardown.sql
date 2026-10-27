@@ -1,0 +1,11 @@
+DROP TABLE IF EXISTS audit_logs        CASCADE;
+DROP TABLE IF EXISTS transactions      CASCADE;
+DROP TABLE IF EXISTS dues_schedules    CASCADE;
+DROP TABLE IF EXISTS members           CASCADE;
+DROP TABLE IF EXISTS designations      CASCADE;
+DROP TABLE IF EXISTS users             CASCADE;
+DROP TABLE IF EXISTS tenants           CASCADE;
+DROP TYPE  IF EXISTS role_enum;
+DROP TYPE  IF EXISTS membership_status_enum;
+DROP TYPE  IF EXISTS dues_frequency_enum;
+DROP TYPE  IF EXISTS transaction_status_enum;
