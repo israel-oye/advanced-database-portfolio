@@ -82,6 +82,7 @@ class Member(Base):
     joined_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
+        server_default=text("NOW()"),
         nullable=False,
         comment="When the member joined the organisation"
     )

@@ -85,7 +85,7 @@ class DuesSchedule(Base):
     )
 
     frequency: Mapped[DuesFrequency] = mapped_column(
-        SAEnum(DuesFrequency, name="dues_frequency_enum"),
+        SAEnum(DuesFrequency, name="dues_frequency_enum", values_callable=lambda x: [e.value for e in x]),
         nullable=False,
         comment="How often this payment is expected"
     )
