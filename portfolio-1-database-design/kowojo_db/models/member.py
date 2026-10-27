@@ -74,8 +74,13 @@ class Member(Base):
     )
 
     status: Mapped[MembershipStatus] = mapped_column(
-        SAEnum(MembershipStatus, name="membership_status_enum"),
+        SAEnum(
+            MembershipStatus,
+            name="membership_status_enum",
+            values_callable=lambda x: [e.value for e in x],
+        ),
         default=MembershipStatus.PENDING,
+        server_default=MembershipStatus.PENDING.value,
         nullable=False,
     )
 

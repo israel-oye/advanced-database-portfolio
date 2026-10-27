@@ -81,6 +81,7 @@ class DuesSchedule(Base):
         String(3),
         nullable=False,
         default="NGN",
+        server_default="NGN",
         comment="ISO 4217 currency code e.g. NGN, USD"
     )
 
@@ -105,12 +106,14 @@ class DuesSchedule(Base):
     is_active: Mapped[bool] = mapped_column(
         Boolean,
         default=True,
+        server_default='true',
         nullable=False,
     )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
+        server_default=text("NOW()"),
         nullable=False,
     )
 

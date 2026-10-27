@@ -59,6 +59,7 @@ class Tenant(Base):
     is_active: Mapped[bool] = mapped_column(
         Boolean,
         default=True,
+        server_default='true',
         nullable=False,
         comment="Whether the organisation's account is currently active"
     )

@@ -60,11 +60,14 @@ class User(Base):
     is_active: Mapped[bool] = mapped_column(
         Boolean,
         default=True,
+        server_default='true',
         nullable=False,
     )
 
     role: Mapped[RoleEnum] = mapped_column(
-        SAEnum(RoleEnum, name="role_enum"),
+        SAEnum(
+            RoleEnum, name="role_enum", values_callable=lambda x: [e.value for e in x]
+        ),
         nullable=False,
         default=RoleEnum.MEMBER,
         comment=(

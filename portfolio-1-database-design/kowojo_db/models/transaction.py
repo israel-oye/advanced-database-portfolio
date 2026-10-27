@@ -95,8 +95,13 @@ class Transaction(Base):
     )
 
     status: Mapped[TransactionStatus] = mapped_column(
-        SAEnum(TransactionStatus, name="transaction_status_enum"),
+        SAEnum(
+            TransactionStatus,
+            name="transaction_status_enum",
+            values_callable=lambda x: [e.value for e in x],
+        ),
         default=TransactionStatus.PENDING,
+        server_default=TransactionStatus.PENDING.value,
         nullable=False,
         index=True,
     )
