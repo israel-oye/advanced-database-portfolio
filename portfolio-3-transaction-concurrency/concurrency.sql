@@ -1,30 +1,41 @@
--- ============================================================
 -- Kowojọ — Portfolio 3: Isolation Levels & Concurrency Control
 -- MIT 8103 Advanced Database Systems · MIVA Open University
 -- ============================================================
--- PostgreSQL implements MVCC (Multi-Version Concurrency Control).
--- Rather than blocking readers with locks, each transaction sees
--- a consistent snapshot of the database. The isolation level
--- controls how that snapshot is taken and how long it is held.
+-- PostgreSQL uses MVCC (Multi-Version Concurrency Control) to
+-- manage how transactions access data at the same time.
+-- This allows transactions to read data without necessarily
+-- having to wait for other transactions to release their locks.
 --
--- Isolation levels (weakest → strongest):
---   READ UNCOMMITTED → treated as READ COMMITTED in PostgreSQL
---   READ COMMITTED   → snapshot per statement (default)
---   REPEATABLE READ  → snapshot per transaction; no phantom rows
---   SERIALIZABLE     → full serial ordering; anomalies abort the txn
+-- The isolation level determines how much of the changes made
+-- by other transactions can be seen while a transaction runs.
+--
+-- The available isolation levels are:
+--   READ UNCOMMITTED → PostgreSQL treats this as READ COMMITTED
+--   READ COMMITTED   → Each statement gets its own snapshot
+--   REPEATABLE READ  → All reads use the same transaction snapshot
+--   SERIALIZABLE     → Transactions behave as though they ran one
+--                      after another; conflicting transactions
+--                      may be aborted.
 -- ============================================================
 
--- ─────────────────────────────────────────────────────────────
+
+-- ============================================================
 -- LEVEL 1: READ COMMITTED (PostgreSQL default)
--- ─────────────────────────────────────────────────────────────
--- Each statement in the transaction sees the most recently
--- committed version of every row at the moment that statement
--- executes. Two reads of the same row in one transaction may
--- return different values if another session commits between them.
+-- ============================================================
+-- With READ COMMITTED, each SQL statement sees the latest
+-- committed data available when that statement begins.
 --
--- Use in Kowojọ: routine member lookups, dashboard reads,
--- single-statement reports where cross-statement consistency
--- is not required.
+-- This means that if another transaction updates a record and
+-- commits while the current transaction is still running, a
+-- later SELECT statement in the current transaction can see
+-- that update.
+--
+-- In other words, reading the same record twice in one
+-- transaction does not always guarantee the same result.
+--
+-- For Kowojọ, this isolation level is suitable for ordinary
+-- member lookups and dashboard queries where each statement
+-- can work with the latest available data.
 
 BEGIN;
 
@@ -41,24 +52,31 @@ ORDER BY t.paid_at DESC;
 
 COMMIT;
 
--- ─────────────────────────────────────────────────────────────
+
+-- ============================================================
 -- LEVEL 2: REPEATABLE READ
--- ─────────────────────────────────────────────────────────────
--- The snapshot is taken once at the start of the transaction and
--- held for all subsequent reads. Rows committed by concurrent
--- sessions after this transaction began will NOT appear in any
--- read, no matter how many statements execute.
+-- ============================================================
+-- Unlike READ COMMITTED, REPEATABLE READ uses one snapshot
+-- throughout the transaction.
 --
--- Use in Kowojọ: revenue reconciliation reports and cross-tenant
--- summaries where both SELECT statements must see identical data.
--- A concurrent payment committing mid-report will not distort
--- either aggregate.
+-- Once the transaction starts, changes committed by other
+-- sessions afterwards will not be visible to its subsequent
+-- SELECT statements.
+--
+-- This is useful when running reports that involve multiple
+-- queries. For example, when generating a revenue report, we
+-- want the different queries to work with the same set of data
+-- instead of producing results based on different snapshots.
+--
+-- In Kowojọ, this can be useful for revenue reconciliation and
+-- reports that compare payment totals across organisations.
 
 BEGIN;
 
 SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;
 
--- First read: totals per organisation
+-- First query: get the number of payments and total amount
+-- collected by each organisation.
 SELECT
     ten.name AS organisation,
     COUNT(t.id) AS payment_count,
@@ -72,9 +90,10 @@ GROUP BY
     ten.name
 ORDER BY total_collected DESC;
 
--- Second read in the same transaction — identical snapshot.
--- A dues payment that committed between these two statements
--- is invisible here, so monthly_revenue aligns with the totals above.
+-- Second query: calculate the revenue collected each month.
+-- Both queries use the same snapshot, so a payment committed
+-- by another session between the two queries will not appear
+-- in this result either.
 SELECT DATE_TRUNC('month', t.paid_at) AS month, SUM(t.amount) AS monthly_revenue
 FROM transactions t
 WHERE
@@ -85,28 +104,38 @@ ORDER BY 1;
 
 COMMIT;
 
--- ─────────────────────────────────────────────────────────────
+
+-- ============================================================
 -- LEVEL 3: SERIALIZABLE
--- ─────────────────────────────────────────────────────────────
--- PostgreSQL tracks read-write dependencies between concurrent
--- SERIALIZABLE transactions. If committing a transaction would
--- violate the serial execution order, PostgreSQL aborts it with:
---   ERROR: could not serialize access due to read/write dependencies
---   SQLSTATE 40001
--- The application must catch 40001 and retry the transaction.
+-- ============================================================
+-- SERIALIZABLE provides the strictest isolation level.
+-- PostgreSQL monitors transactions to check whether their
+-- operations could produce a result that is inconsistent with
+-- running those transactions one after another.
 --
--- Use in Kowojọ: the payment existence check on the critical path.
--- Two sessions both reading "no completed payment exists" and then
--- both inserting would normally succeed under READ COMMITTED,
--- producing a double charge. Under SERIALIZABLE one is aborted.
+-- If PostgreSQL detects a conflict that cannot be resolved
+-- while maintaining this behaviour, it aborts one of the
+-- transactions and returns a serialization failure.
+--
+-- The application must handle this error (SQLSTATE 40001)
+-- and retry the transaction where appropriate.
+--
+-- In Kowojọ, this is relevant to checking whether a member
+-- has already paid for a particular dues schedule.
+-- If two sessions both check for an existing payment at the
+-- same time and both get a negative result, they may both
+-- attempt to insert a payment. SERIALIZABLE can detect the
+-- resulting conflict and abort one of the transactions.
 
 BEGIN;
 
 SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
 
--- Read: does a completed payment already exist for this member + schedule?
--- Under SERIALIZABLE, if Session B reads the same "false" result
--- and both then insert, PostgreSQL detects the cycle and aborts one.
+-- Check whether the selected member has already made a
+-- successful payment for the selected dues schedule.
+-- If another session performs the same check and attempts
+-- the same operation, PostgreSQL may detect a conflict
+-- between the two transactions.
 WITH
     target AS (
         SELECT m.id AS member_id, ds.id AS schedule_id
@@ -125,19 +154,28 @@ SELECT EXISTS (
             t.status = 'completed'
     ) AS already_paid;
 
--- If already_paid = false → proceed with payment INSERT (see transactions.sql S1).
--- If already_paid = true  → skip; this is a duplicate attempt.
+-- If already_paid = false, the payment can proceed.
+-- The INSERT operation is shown in transactions.sql, Scenario 1.
+-- If already_paid = true, the payment should not be processed.
 
 COMMIT;
 
--- ─────────────────────────────────────────────────────────────
+
+-- ============================================================
 -- SELECT FOR UPDATE: Pessimistic Row Locking
--- ─────────────────────────────────────────────────────────────
--- The practical mechanism Kowojọ uses on every dues payment.
--- Acquires an exclusive row-level lock immediately rather than
--- relying on PostgreSQL to detect a serialization anomaly after
--- the fact. Concurrent sessions queue at the lock; only one
--- proceeds at a time — no retries required on the application side.
+-- ============================================================
+-- Another way to prevent two sessions from processing the same
+-- member's payment at the same time is to lock the member's row.
+--
+-- SELECT FOR UPDATE is used for this purpose. It acquires a
+-- row-level lock and prevents other transactions from acquiring
+-- a conflicting lock on that same row until the current
+-- transaction ends.
+--
+-- This is the approach used in Kowojọ when processing dues
+-- payments. Rather than allowing both sessions to proceed and
+-- checking for conflicts afterwards, the second session has
+-- to wait until the first one finishes.
 
 BEGIN;
 
@@ -153,45 +191,56 @@ WHERE
     )
 FOR UPDATE;
 
--- Session B running the identical SELECT FOR UPDATE on this row
--- will BLOCK at this point until Session A issues COMMIT or ROLLBACK.
--- Once unblocked, Session B re-reads the row and detects that
--- Session A already recorded a completed payment — duplicate blocked.
+-- If Session B executes the same SELECT FOR UPDATE on this
+-- member, it will have to wait while Session A holds the lock.
+-- After Session A commits or rolls back, Session B can proceed.
+-- It can then check whether a payment has already been recorded.
 
 ROLLBACK;
--- Release the lock; demonstration only
+-- The transaction is rolled back here to release the lock.
+-- This is only a demonstration; no payment is being processed.
 
--- ─────────────────────────────────────────────────────────────
+
+-- ============================================================
 -- CONCURRENT SESSION TIMELINE
--- ─────────────────────────────────────────────────────────────
--- Two members simultaneously attempt to pay the same dues schedule.
--- SELECT FOR UPDATE on the member row serialises the two sessions.
+-- ============================================================
+-- This example shows what happens when two sessions attempt
+-- to pay for the same dues schedule at roughly the same time.
 --
--- [Session A — arrives first]
+-- Since both sessions are working with the same member, the
+-- SELECT FOR UPDATE statement ensures that they do not process
+-- the payment simultaneously.
+--
+-- [Session A — first payment attempt]
 --   T1  BEGIN;
 --   T2  SELECT id FROM members WHERE id = '<member>' FOR UPDATE;
---           → Lock acquired on member row
+--           → The lock is acquired successfully.
 --   T3  INSERT INTO transactions (...) VALUES (..., 'completed', ...);
 --   T4  INSERT INTO audit_logs   (...) VALUES (...);
 --   T5  COMMIT;
---           → Lock released; payment and audit log are durable
+--           → The changes are saved and the lock is released.
 --
--- [Session B — concurrent duplicate attempt]
+-- [Session B — second payment attempt]
 --   T2  BEGIN;
 --   T3  SELECT id FROM members WHERE id = '<member>' FOR UPDATE;
---           → BLOCKS — waits for Session A's lock
+--           → Session B has to wait for Session A to finish.
 --       (Session A commits at T5)
---           → Session B unblocks
+--           → Session B is now allowed to continue.
 --   T6  Query transactions WHERE member_id = '<member>'
 --         AND dues_schedule_id = '<schedule>' AND status = 'completed';
---           → Returns Session A's row
+--           → The payment recorded by Session A is found.
 --   T7  Duplicate detected → ROLLBACK;
 --
--- Result: exactly one payment row; no double charge.
---
--- ─────────────────────────────────────────────────────────────
+-- The result is that Session B does not proceed with another
+-- payment after finding the existing successful transaction.
+
+
+-- ============================================================
 -- ISOLATION LEVEL SUMMARY
--- ─────────────────────────────────────────────────────────────
+-- ============================================================
+--
+-- The table below summarises the behaviour of the three
+-- isolation levels discussed above.
 --
 -- Hazard               | READ COMMITTED | REPEATABLE READ | SERIALIZABLE
 -- ---------------------|----------------|-----------------|-------------
@@ -201,9 +250,15 @@ ROLLBACK;
 -- Lost update          | Possible       | Prevented*      | Prevented
 -- Serialization anomaly| Possible       | Possible        | Prevented
 --
--- * PostgreSQL's REPEATABLE READ prevents phantoms and lost updates
---   beyond what the SQL standard requires for that level.
+-- * PostgreSQL's REPEATABLE READ also prevents phantom reads
+--   and certain lost-update situations, providing stronger
+--   protection than the SQL standard requires at this level.
 --
--- Kowojọ defaults: READ COMMITTED for reads; REPEATABLE READ for
--- financial reports; SELECT FOR UPDATE (not SERIALIZABLE) for
--- payment writes — lower overhead, no retry loop required.
+-- For Kowojọ, READ COMMITTED is suitable for ordinary queries,
+-- while REPEATABLE READ is useful for reports that need to work
+-- with a consistent snapshot of the data.
+--
+-- For payment operations, SELECT FOR UPDATE is used to control
+-- access to the member's record. This provides a straightforward
+-- way to coordinate concurrent payment attempts without relying
+-- entirely on SERIALIZABLE transactions and retry handling.
