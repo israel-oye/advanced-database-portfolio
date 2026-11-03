@@ -66,11 +66,11 @@ WHERE
 ORDER BY tx.created_at DESC;
 
 -- -----------------------------------------------------------------------------
--- Q4: Members who have never paid for a specific dues schedule
+-- Q4: Members who have never successfully paid for a specific dues schedule
 -- -----------------------------------------------------------------------------
 -- Uses a LEFT JOIN with a NULL check to find members who have no
 -- successful transaction against the Annual Dues 2024 schedule.
--- Useful for identifying who to chase for payment.
+-- Useful for identifying who to chase for payment. Members who have pending payments will not be included
 -- This query is a good candidate for optimisation (see optimisation.sql).
 -- -----------------------------------------------------------------------------
 SELECT u.first_name, u.last_name, m.membership_number, m.status

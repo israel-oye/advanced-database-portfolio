@@ -62,14 +62,17 @@ CREATE INDEX idx_transactions_member_schedule
 | Planning Time | 28.020 ms | 1.332 ms |
 | Scan type | Seq Scan | Seq Scan |
 
-PostgreSQL continued using a Sequential Scan in both runs. With 28
-transaction rows, the optimiser correctly determined that index
-navigation overhead exceeded the cost of a full table scan. The
-95% drop in Planning Time is the most significant result — with
-index statistics available, the optimiser resolved its strategy
-faster. At production scale, this index would cause PostgreSQL to
-switch to an Index Scan, navigating directly to rows matching the
-filter rather than reading the entire table.
+PostgreSQL continued using a Sequential Scan in both runs. With only 28
+transaction rows, the optimiser correctly determined that reading the whole
+table was cheaper than navigating an index. Execution time fell from
+2.542 ms to 0.580 ms and Planning Time from 28.020 ms to 1.332 ms, but these
+differences are not evidence that the index was used. The plan did not
+change, and the first run in a session typically pays a one-off cost to load
+table metadata and warm the cache, so I treat the timings as inconclusive.
+The index is justified by the query's shape: its key order matches the join
+and filter columns. At production scale, PostgreSQL would be expected to
+switch to an Index Scan, navigating directly to the matching rows instead of
+reading the entire table.
 
 ---
 
