@@ -41,13 +41,13 @@ BEGIN;
 
 SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
 
-SELECT t.id, t.amount, t.status, t.paid_at, m.membership_number, ds.title AS schedule_title
+SELECT t.id, t.amount, t.status, t.paid_at, m.membership_number, ds.name AS schedule_title
 FROM
     transactions t
     JOIN members m ON m.id = t.member_id
     JOIN dues_schedules ds ON ds.id = t.dues_schedule_id
 WHERE
-    t.status = 'completed'
+    t.status = 'successful'
 ORDER BY t.paid_at DESC;
 
 COMMIT;
@@ -84,7 +84,7 @@ SELECT
 FROM transactions t
     JOIN tenants ten ON ten.id = t.tenant_id
 WHERE
-    t.status = 'completed'
+    t.status = 'successful'
 GROUP BY
     ten.id,
     ten.name
@@ -97,7 +97,7 @@ ORDER BY total_collected DESC;
 SELECT DATE_TRUNC('month', t.paid_at) AS month, SUM(t.amount) AS monthly_revenue
 FROM transactions t
 WHERE
-    t.status = 'completed'
+    t.status = 'successful'
 GROUP BY
     1
 ORDER BY 1;
@@ -151,7 +151,7 @@ SELECT EXISTS (
             JOIN target tgt ON t.member_id = tgt.member_id
             AND t.dues_schedule_id = tgt.schedule_id
         WHERE
-            t.status = 'completed'
+            t.status = 'successful'
     ) AS already_paid;
 
 -- If already_paid = false, the payment can proceed.
