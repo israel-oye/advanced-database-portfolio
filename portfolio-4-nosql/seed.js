@@ -7,6 +7,9 @@
 use('kowojo');
 
 db.member_profiles.drop();
+db.member_profiles.createIndex({ member_id: 1 }, { unique: true });
+print("\nCreated index on member_id...\n");
+
 print('\n-- Collection cleared. Inserting seed data...\n');
 
 
