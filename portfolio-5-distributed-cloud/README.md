@@ -27,7 +27,7 @@ transactions_partitioned        ← routing shell (doesn't have any rows)
 
 When a query filters on `tenant_id`, PostgreSQL's planner applies **partition pruning** — it identifies which partition can contain matching rows and ignores the others entirely. The `EXPLAIN` output at the end of `partitioning.sql` shows only one partition being scanned regardless of how many exist. A screenshot of the query is attached in the `screenshots` folder.
 
-This is the same principle that underlies distributed sharding. The difference is physical location: in a local setup, the partitions are sub-tables on the same disk; in a distributed cluster, each partition lives on a separate node in a separate data centre. Partitioning is the local proof of concept for sharding
+This is the same principle that underlies distributed sharding. The difference is physical location: in a local setup, the partitions are sub-tables on the same disk; in a distributed cluster, each partition lives on a separate node in a separate data centre. While partitoning does not demonstrate distributed architecture, it provides a local proof of concept for sharding
 
 ---
 
@@ -45,7 +45,7 @@ Network partitions are not optional — they happen in any real distributed syst
 
 ### PostgreSQL (Neon DB): CP
 
-PostgreSQL is a CP system. When Kowojọ records a dues payment, the transaction either commits fully or does not commit at all. If a network partition means a replica cannot acknowledge a write, PostgreSQL will sacrifice availability — the write is held — rather than let two nodes hold conflicting versions of the ledger. For a fintech platform where double charges and lost payments are unacceptable, this is the right trade-off. An unavailable system is recoverable; corrupted financial records are not.
+In a single node deployment like this, PostgreSQL favours consistency over availability – although, configuration could modify this. When Kowojọ records a dues payment, the transaction either commits fully or does not commit at all. If a network partition means a replica cannot acknowledge a write, PostgreSQL will sacrifice availability (i.e the write is held) rather than let two nodes hold conflicting versions of the ledger. For a fintech platform where double charges and lost payments are unacceptable, this is the right trade-off. An unavailable system is recoverable; corrupted financial records are not.
 
 Neon DB inherits PostgreSQL's CP guarantees and layers on top a serverless architecture where storage and compute are separated. The write-ahead log (WAL) is streamed to Neon's storage layer continuously, so even if the compute node goes down, no committed data is lost.
 
@@ -69,9 +69,9 @@ In Kowojọ's MongoDB layer (member profiles), eventual staleness is tolerable. 
 For Kowojọ, the chosen model is primary-replica:
 
 - The primary node handles all writes: dues payments, member approvals, audit log entries
-- One or more read replicas serve the reporting queries from Portfolio 2 (dues collected per org, monthly revenue, members who have not paid). These queries are heavy, tenant-wide scans; running them on a replica keeps them off the primary's write path
+- One or more read replicas could serve the reporting queries from Portfolio 2 (dues collected per org, monthly revenue, members who have not paid). These queries are heavy, tenant-wide scans; running them on a replica keeps them off the primary's write path
 
-Neon DB implements this through its branching model: the primary is the main branch; read replicas are compute endpoints that share the same storage layer, so replication lag is near zero i.e replicas read from the same stream rather than receiving data over a network link.
+Neon DB implements repliction through its branching model: the primary is the main branch; read replicas are compute endpoints that share the same storage layer; although replica branches read from the same storage as the primary instead of receiving data over a network link, there might be brief lags behind the primary due to them being asynchronous per the documentation.
 
 ---
 
@@ -84,7 +84,7 @@ Neon DB implements this through its branching model: the primary is the main bra
 
 ### Connection pooling
 
-At scale, every API request that opens a direct PostgreSQL connection is a risk — PostgreSQL has a hard ceiling on simultaneous connections, and a traffic spike can exhaust it. Neon DB includes PgBouncer-based connection pooling by default, which means hundreds of application connections share a small pool of actual database connections. This is transparent to the application.
+At scale, every API request that opens a direct PostgreSQL connection is a risk — PostgreSQL has a hard ceiling on simultaneous connections, and a traffic spike can exhaust it. Neon DB includes PgBouncer-based connection pooling (which could be configured by adding a flag to the hostname in the connection string), which means hundreds of application connections share a small pool of actual database connections.
 
 ---
 
