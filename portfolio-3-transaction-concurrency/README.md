@@ -25,11 +25,11 @@ Dues payments in Kowojọ involve coordinated writes across two tables (`transac
 
 ## Transaction Scenarios (`transactions.sql`)
 
-| # | Scenario | Concept Demonstrated | Outcome |
-| --- | --- | --- | --- |
-| S1 | Successful dues payment | Atomicity + `SELECT FOR UPDATE` | Payment and audit log commit together; member row locked for the transaction duration |
-| S2 | Duplicate payment blocked | Consistency guard + implicit rollback | Existing completed payment detected; `RAISE EXCEPTION` fires; no row is written |
-| S3 | SAVEPOINT — partial failure recovery | Selective rollback | Audit log INSERT fails (null actor); nested exception block rolls back only the audit write; fallback entry commits alongside the payment |
+| # | Scenario | Concept Demonstrated | Outcome | Image |
+| --- | --- | --- | --- | -- |
+| S1 | Successful dues payment | Atomicity + `SELECT FOR UPDATE` | Payment and audit log commit together; member row locked for the transaction duration | [Result 1](screenshots/acid-scenarios-1.png) |
+| S2 | Duplicate payment blocked | Consistency guard + implicit rollback | Existing completed payment detected; `RAISE EXCEPTION` fires; no row is written | [Result 2](screenshots/acid-scenarios-2.png) |
+| S3 | SAVEPOINT — partial failure recovery | Selective rollback | Audit log INSERT fails (null actor); nested exception block rolls back only the audit write; fallback entry commits alongside the payment | [Result 3](screenshots/acid-scenarios-3.png) |
 
 ### Scenario 3 — SAVEPOINT detail
 
@@ -50,11 +50,11 @@ Outer block starts
 
 ## Isolation Levels (`concurrency.sql`)
 
-| Level | Snapshot Behaviour | Kowojọ Use Case |
-| --- | --- | --- |
-| `READ COMMITTED` *(default)* | Each statement sees the latest committed row at execution time | Routine member queries, dashboard reads |
-| `REPEATABLE READ` | Snapshot fixed at transaction start; no new committed rows appear mid-transaction | Revenue reconciliation; cross-tenant summaries where two aggregates must be consistent |
-| `SERIALIZABLE` | Full serial ordering enforced; transactions with conflicting read-write dependencies abort (SQLSTATE 40001) | Payment existence check where two concurrent sessions must not both read "not yet paid" |
+| Level | Snapshot Behaviour | Kowojọ Use Case | Image |
+| --- | --- | --- | -- |
+| `READ COMMITTED` *(default)* | Each statement sees the latest committed row at execution time | Routine member queries, dashboard reads | [image](screenshots/conc--query_result-read-committed.png) |
+| `REPEATABLE READ` | Snapshot fixed at transaction start; no new committed rows appear mid-transaction | Revenue reconciliation; cross-tenant summaries where two aggregates must be consistent | [image](screenshots/conc--query_result_repeatable_read_combined.png) |
+| `SERIALIZABLE` | Full serial ordering enforced; transactions with conflicting read-write dependencies abort (SQLSTATE 40001) | Payment existence check where two concurrent sessions must not both read "not yet paid" | [image](screenshots/conc--query_result-serializable.png) |
 
 ---
 
@@ -76,4 +76,5 @@ Outer block starts
 | --- | --- |
 | `transactions.sql` | Three annotated scenarios demonstrating ACID properties using explicit `BEGIN`/`COMMIT` and PL/pgSQL `DO` blocks |
 | `concurrency.sql` | Isolation level examples, `SELECT FOR UPDATE` demonstration, and a concurrent session timeline with hazard summary table |
+| `screenshots/` | folder containing screen captures of ACID scenarios and isolatioin level examples |
 | `README.md` | This document |

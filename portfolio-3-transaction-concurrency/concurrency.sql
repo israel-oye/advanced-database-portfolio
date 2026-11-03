@@ -215,7 +215,7 @@ ROLLBACK;
 --   T1  BEGIN;
 --   T2  SELECT id FROM members WHERE id = '<member>' FOR UPDATE;
 --           → The lock is acquired successfully.
---   T3  INSERT INTO transactions (...) VALUES (..., 'completed', ...);
+--   T3  INSERT INTO transactions (...) VALUES (..., 'successful', ...);
 --   T4  INSERT INTO audit_logs   (...) VALUES (...);
 --   T5  COMMIT;
 --           → The changes are saved and the lock is released.
@@ -227,7 +227,7 @@ ROLLBACK;
 --       (Session A commits at T5)
 --           → Session B is now allowed to continue.
 --   T6  Query transactions WHERE member_id = '<member>'
---         AND dues_schedule_id = '<schedule>' AND status = 'completed';
+--         AND dues_schedule_id = '<schedule>' AND status = 'successful';
 --           → The payment recorded by Session A is found.
 --   T7  Duplicate detected → ROLLBACK;
 --

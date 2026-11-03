@@ -38,13 +38,23 @@ WHERE
         SELECT m.id
         FROM members m
             JOIN dues_schedules ds ON ds.tenant_id = m.tenant_id
+        WHERE
+          m.status = 'active'
+          AND ds.is_active
+          AND NOT EXISTS (
+              SELECT 1
+              FROM transactions t
+              WHERE
+                  t.member_id = m.id
+                  AND t.dues_schedule_id = ds.id
+          )
         ORDER BY m.id, ds.id
         LIMIT 1
     )
 FOR UPDATE;
 
 -- Step 2: Create the payment record and its audit log entry.
--- The CTE allows both operations to be performed as part of
+-- The CTE (Common Table expression) allows both operations to be performed as part of
 -- the same transaction, so they are committed together.
 WITH
     target AS (
@@ -56,6 +66,16 @@ WITH
             ds.amount AS amount
         FROM members m
             JOIN dues_schedules ds ON ds.tenant_id = m.tenant_id
+        WHERE
+            m.status = 'active'
+            AND ds.is_active
+            AND NOT EXISTS (
+                SELECT 1
+                FROM transactions t
+                WHERE
+                    t.member_id = m.id
+                    AND t.dues_schedule_id = ds.id
+            )
         ORDER BY m.id, ds.id
         LIMIT 1
     ),
@@ -134,12 +154,11 @@ DECLARE
   v_duplicate   UUID;
 BEGIN
   -- Get the member and dues schedule used in Scenario 1.
-  SELECT m.id, m.user_id, m.tenant_id, ds.id, ds.amount
+  SELECT t.member_id, m.user_id, t.tenant_id, t.dues_schedule_id, t.amount
   INTO   v_member_id, v_user_id, v_tenant_id, v_schedule_id, v_amount
-  FROM   members m
-  JOIN   dues_schedules ds ON ds.tenant_id = m.tenant_id
-  ORDER  BY m.id, ds.id
-  LIMIT  1;
+  FROM   transactions t
+  JOIN   members m ON m.id = t.member_id
+  WHERE  t.payment_reference = 'PSK-P3-S1-001';
 
   -- Check whether a successful payment already exists.
   SELECT id INTO v_duplicate
@@ -208,6 +227,16 @@ BEGIN
   INTO   v_member_id, v_user_id, v_tenant_id, v_schedule_id, v_amount
   FROM   members m
   JOIN   dues_schedules ds ON ds.tenant_id = m.tenant_id
+  WHERE
+    m.status = 'active'
+    AND ds.is_active
+    AND NOT EXISTS (
+        SELECT 1
+        FROM transactions t
+        WHERE
+            t.member_id = m.id
+            AND t.dues_schedule_id = ds.id
+    )
   ORDER  BY m.id, ds.id
   LIMIT  1;
 
