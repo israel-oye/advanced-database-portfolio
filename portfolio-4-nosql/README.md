@@ -64,11 +64,11 @@ The `screenshots/` folder contains the following captures taken from MongoDB Com
 | --- | --- |
 | `01-collection-overview.png` | The full `member_profiles` collection — all 12 documents listed, confirming the seed ran correctly |
 | `02-alumni-document.png` | One Osun Alumni document expanded — profile shape: matric_number, graduation_year, faculty, department, degree_class |
-| `03-medical-coop-document.png` | One Ife Medical Coop document expanded — hybrid profile: MDCN credentials + cooperative financials |
+| `03-medical-coop.png` | One Ife Medical Coop document expanded — hybrid profile: MDCN credentials + cooperative financials |
 | `04-founders-document.png` | One Lagos Tech Founders document expanded — startup profile: startup_name, industry, funding_stage, team_size |
-| `05-query1-result.png` | Output of Query 1 — three loan-eligible Ife Medical Coop members |
-| `06-query2-result.png` | Output of Query 2 — two practitioners with licences expiring by 2026 |
-| `07-query3-result.png` | Output of Query 3 — aggregation pipeline result: member count and unverified tally per tenant type |
+| `05-query-1-result.png` | Output of Query 1 — three loan-eligible Ife Medical Coop members |
+| `06-query-2-result.png` | Output of Query 2 — two practitioners with licences expiring by 2026 |
+| `07-query-3-result.png` | Output of Query 3 — aggregation pipeline result: member count and unverified tally per tenant type |
 
 ---
 
