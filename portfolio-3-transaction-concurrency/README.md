@@ -29,7 +29,7 @@ Dues payments in Kowojọ involve coordinated writes across two tables (`transac
 | --- | --- | --- | --- | -- |
 | S1 | Successful dues payment | Atomicity + `SELECT FOR UPDATE` | Payment and audit log commit together; member row locked for the transaction duration | [Result 1](screenshots/acid-scenarios-1.png) |
 | S2 | Duplicate payment blocked | Consistency guard + implicit rollback | Existing completed payment detected; `RAISE EXCEPTION` fires; no row is written | [Result 2](screenshots/acid-scenarios-2.png) |
-| S3 | SAVEPOINT — partial failure recovery | Selective rollback | Audit log INSERT fails (null actor); nested exception block rolls back only the audit write; fallback entry commits alongside the payment | [Result 3](screenshots/acid-scenarios-3.png) |
+| S3 | (Durability) SAVEPOINT — partial failure recovery | Selective rollback | Audit log INSERT fails (null target_type); nested exception block rolls back only the audit write; fallback entry commits alongside the payment | [Result 3](screenshots/acid-scenarios-3.png) |
 
 ### Scenario 3 — SAVEPOINT detail
 
@@ -39,10 +39,10 @@ PL/pgSQL's nested `BEGIN … EXCEPTION` block acts as an explicit `SAVEPOINT`:
 Outer block starts
   ├── INSERT INTO transactions  ← succeeds; payment row exists
   ├── Inner BEGIN (= SAVEPOINT)
-  │     └── INSERT INTO audit_logs (actor_id = NULL)  ← fails
+  │     └── INSERT INTO audit_logs (target_type = NULL)  ← fails not-null constraint
   │         EXCEPTION: not_null_violation
   │         ROLLBACK TO SAVEPOINT  ← only the audit INSERT is undone
-  │         INSERT INTO audit_logs (fallback actor)  ← succeeds
+  │         INSERT INTO audit_logs (target_type = 'transaction')  ← succeeds
   └── Outer block commits: payment + fallback audit log both durable
 ```
 
@@ -76,5 +76,5 @@ Outer block starts
 | --- | --- |
 | `transactions.sql` | Three annotated scenarios demonstrating ACID properties using explicit `BEGIN`/`COMMIT` and PL/pgSQL `DO` blocks |
 | `concurrency.sql` | Isolation level examples, `SELECT FOR UPDATE` demonstration, and a concurrent session timeline with hazard summary table |
-| `screenshots/` | folder containing screen captures of ACID scenarios and isolatioin level examples |
+| `screenshots/` | folder containing screen captures of three ACD scenarios and four isolatioin level examples |
 | `README.md` | This document |

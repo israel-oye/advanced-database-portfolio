@@ -259,7 +259,7 @@ BEGIN
       gen_random_uuid(), v_tenant_id,
       v_user_id,
       'payment.successful',
-      NULL,             -- Deliberately causes a NOT NULL constraint violation
+      NULL,             -- Deliberately causes a NOT NULL constraint violation on target_type
       v_txn_id::TEXT,
       'Dues payment recorded'
     );
@@ -277,7 +277,7 @@ BEGIN
         gen_random_uuid(), v_tenant_id,
         v_user_id,
         'payment.audit_fallback',
-        'transaction',    -- Use a known value instead of NULL
+        'transaction',    -- Use a known value for target_type instead of NULL
         v_txn_id::TEXT,
         'Fallback audit: target_type was unavailable from event classifier at payment time'
       );
