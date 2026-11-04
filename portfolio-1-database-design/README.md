@@ -147,8 +147,9 @@ See Portfolio 4 for the NoSQL model.
 ### 1. Set up a virtual environment
 
 ```bash
+cd ./portfolio-1-database-design
 python -m venv venv
-venv\Scripts\activate
+venv/Scripts/activate
 pip install -r requirements.txt
 ```
 
@@ -162,7 +163,13 @@ cp .env.example .env
 Your `.env` should look like:
 `DATABASE_URL=postgresql://your_user:your_password@localhost:5432/kowojo_db`
 
-### 3. Create the database in PostgreSQL (if it doesn't exist)
+### 3. Create the database in PostgreSQL (using psql or any client) (if it doesn't exist)
+
+To login, in the terminal run
+
+```bash
+psql -U <postgres-username>
+```
 
 ```sql
 CREATE DATABASE kowojo_db;
@@ -180,15 +187,14 @@ You should see all table names printed on success.
 
 ## DDL Script
 
-`schema.sql` contains the full PostgreSQL DDL for the Kowojọ schema,
-hand-authored to match the SQLAlchemy models exactly.
+`schema.sql` contains the full PostgreSQL DDL for the Kowojọ schema, made to match the SQLAlchemy models exactly.
 
 It can be run independently of the Python package:
 
     psql -U your_user -d kowojo_db -f schema.sql
 
 This script serves as human-readable documentation of the schema and demonstrates understanding of the raw SQL beneath the ORM layer.
-A commented-out teardown block at the top of the file allows the database to be reset cleanly during development.
+A teardown script teardown.sql allows the database to be reset cleanly during development.
 
 
 ## Schema Design Notes
