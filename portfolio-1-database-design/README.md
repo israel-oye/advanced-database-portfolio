@@ -28,6 +28,9 @@
 | `transactions` | Payment records: every dues payment attempt |
 | `audit_logs` | Append-only log of every significant system event |
 
+### ERD
+![Entity Relatiionship Diagram](kowojo_db-ERD.png)
+
 ---
 
 ## Normalisation
@@ -250,7 +253,7 @@ portfolio-1-database-design/
 │ ├── dues_schedule.py
 │ ├── transaction.py
 │ └── audit_log.py
-├── kowojo_db - ERD.png
+├── kowojo_db-ERD.png
 ├── requirements.txt
 ├── schema.sql
 ├── teardown.sql
