@@ -98,7 +98,7 @@ prior queries. Planning Time increased slightly after the index
 was added because the optimiser now evaluates an additional
 strategy before making its decision, which is expected behaviour.
 
-A screenshot of the Q6 execution plan post-index is in `screenshots/`.
+A screenshot of the Q6 execution plan pre and post-index is in `screenshots/`.
 
 At production scale, the composite index on `(tenant_id, status,
 paid_at)` would allow PostgreSQL to locate the target tenant's
@@ -126,4 +126,5 @@ choice, and being able to predict how behaviour changes at scale.
 | `Q3 - Payment history for a specific member.png` | Q3 payment history |
 | `Q4 - Fetch members yet to pay dues.png` | Q4 anti-join result |
 | `Q8 - Audit trail of a transaction.png` | Q8 audit log output |
-| `Q6 - Optimization after adding index.png` | EXPLAIN ANALYZE output after index creation |
+| `Q6A - Optimization before adding index.png` | EXPLAIN ANALYZE output before index creation |
+| `Q6B - Optimization after adding index.png` | EXPLAIN ANALYZE output after index creation |
